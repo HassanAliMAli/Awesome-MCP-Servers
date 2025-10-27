@@ -1,0 +1,178 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-awesome_mcp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      POSTGRES_DB: ${POSTGRES_DB:-awesome_mcp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Gitea - Self-hosted Git
+  gitea:
+    image: gitea/gitea:1.22
+    container_name: gitea
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: ${GITEA_DB_NAME:-gitea}
+      GITEA__database__USER: ${GITEA_DB_USER:-gitea}
+      GITEA__database__PASSWD: ${GITEA_DB_PASSWD:-gitea_password}
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Matomo - Web Analytics
+  matomo:
+    image: matomo:5-fpm-alpine
+    container_name: matomo
+    environment:
+      MATOMO_DATABASE_HOST: postgres
+      MATOMO_DATABASE_TABLES_PREFIX: matomo_
+      MATOMO_DATABASE_USERNAME: ${MATOMO_DB_USER:-matomo}
+      MATOMO_DATABASE_PASSWORD: ${MATOMO_DB_PASSWD:-matomo_password}
+      MATOMO_DATABASE_DBNAME: ${MATOMO_DB_NAME:-matomo}
+    volumes:
+      - matomo_config:/var/www/html/config
+      - matomo_logs:/var/www/html/logs
+      - matomo_tmp:/var/www/html/tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  matomo-nginx:
+    image: nginx:alpine
+    container_name: matomo-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - matomo_config:/var/www/html/config
+      - matomo_logs:/var/www/html/logs
+      - matomo_tmp:/var/www/html/tmp
+      - ./nginx/matomo.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - matomo
+    restart: unless-stopped
+
+  # n8n - Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    environment:
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_HOST: localhost
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-generate_secure_key_here}
+      GENERIC_TIMEZONE: America/New_York
+      TZ: America/New_York
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
+  # Prometheus - Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  # Grafana - Dashboards
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_password_here}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_DOMAIN: localhost
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # cAdvisor - Container Monitoring
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    privileged: true
+
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node-exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+volumes:
+  postgres_data:
+    driver: local
+  gitea_data:
+    driver: local
+  matomo_config:
+    driver: local
+  matomo_logs:
+    driver: local
+  matomo_tmp:
+    driver: local
+  n8n_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

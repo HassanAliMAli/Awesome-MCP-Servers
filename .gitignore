@@ -1,0 +1,127 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Docker
+docker-compose.override.yml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Docker Volumes and Data
+scripts/postgres/
+scripts/gitea/
+scripts/matomo-db-data/
+scripts/matomo-app-data/
+postgres_data/
+n8n_data/
+prometheus_data/
+grafana_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashcan
+ehthumbs.db
+Desktop.ini
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets and Keys
+*.key
+*.pem
+*.crt
+*.p12
+
+# Build Output
+dist/
+build/
+out/
+
+# Coverage Reports
+coverage/
+.coverage
+*.cover
+htmlcov/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+
+# Backup Files
+*.bak
+*.backup
+
+# Local Configuration Override
+settings.local.json
+mcp-servers.local.json
